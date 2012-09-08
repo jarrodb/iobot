@@ -1,10 +1,6 @@
 import tornado.web
 import tornado.auth
 
-# ditch this
-twitter_consumer_key = 'FcwhVFaLVlkupO97GF12Rw'
-twitter_consumer_secret = 'JEGIeELh0GGdYr0nGfmy1S4E9iBdBI1OiT0O6OoSXw'
-
 
 class AuthHandler(tornado.web.RequestHandler,
                   tornado.auth.TwitterMixin):
@@ -23,8 +19,7 @@ class AuthHandler(tornado.web.RequestHandler,
         if not user:
             raise tornado.web.HTTPError(500, "Twitter auth failed")
         # return, and/or save the user now
-        self.authorize_redirect()
-
-    return application = tornado.web.Application([(r"/auth", AuthHandler)])
-
+        store = self.application.settings.store
+        store.upsert({'nick': 'something'})
+        #self.authorize_redirect()
 

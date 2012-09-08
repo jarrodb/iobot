@@ -38,6 +38,7 @@ class IrcObj(object):
         self.command_args = None    # <plugin> <command args>
         self.nick = None            # IRC Nickname
         self.mask = None            # user@host
+        self.user = None
         self._parse_line(line)
 
     def _parse_line(self, line):
@@ -60,6 +61,11 @@ class IrcObj(object):
         originator = reuser.match(stoks[0])
         if originator:
             self.nick, self.usermask = originator.groups()
+            _user = self._bot.store.find_one({
+                    'nick': self.nick,
+                    'mask': self.mask,
+                    })
+            self._user = User(_user) if _user else None
         stoks = stoks[1:] # strip off server tok
 
         self.server_cmd = stoks[0].upper()
@@ -100,6 +106,10 @@ class IOBot(object):
         self.char = char
         self._plugins = dict()
         self._connected = False
+
+        self._initial_chans = initial_chans
+        self._on_ready = on_ready
+
         # used for parsing out nicks later, just wanted to compile it once
         # server protocol gorp
         self._irc_proto = {
@@ -111,14 +121,11 @@ class IOBot(object):
         # build our user command list
         self.cmds = dict()
 
-        self._initial_chans = initial_chans
-        self._on_ready = on_ready
+        # initialize the Store
+        self.store = Store()
 
         # initialize API server
-        self._api = APIServer()
-
-        # initialize the Store
-        self._store = Store()
+        self._api = APIServer(self.store)
 
         # finally, connect.
         self._connect()
