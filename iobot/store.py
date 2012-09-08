@@ -5,7 +5,7 @@ class Store(object):
     """ Memory Storage (for now)
 
     Public Methods:
-    create
+    insert
     upsert
     delete
     find
@@ -23,7 +23,7 @@ class Store(object):
 
     # public:
 
-    def create(self, item):
+    def insert(self, item):
         assert isinstance(item, dict), "Query must be a dict"
 
         if item.has_key(self._ID_KEY):
@@ -34,6 +34,8 @@ class Store(object):
 
         self._queue.append(item)
         self._create_index_for(item)
+
+        return item[self._ID_KEY]
 
     def upsert(self, item):
         """ repair this """
@@ -47,7 +49,48 @@ class Store(object):
             # assign one to insert
             self._assign_id(item)
 
-        self.create(item)
+        self.insert(item)
+
+    def update(self, item):
+        assert isinstance(item, dict), "Document must be a dict"
+
+        KEYWORDS = {
+            '$push': '_push_value_onto_key',
+            '$pop': '_pop_index_from_key',
+            '$inc': '_increment_value_of_key',
+            '$dec': '_decrement_value_of_key',
+            }
+
+        def _update_dict_value(doc, key, d_value):
+            if len(d_value.keys()) > 1:
+                # no keywords specificed at root level
+                doc[key] = d_value
+                return
+
+            # operations will have only one key
+            # i.e. {'count': {'$inc': 1}}
+            d_key = d_value.keys()[0]
+            kw_func = KEYWORDS.get(d_key, None)
+            if kw_func:
+                kw_func = getattr(self, kw_func)
+                kw_func(doc, key, d_value[d_key])
+            else:
+                doc[key] = d_value
+
+        doc = self.find_one({self._ID_KEY: item[self._ID_KEY]})
+        assert doc, "Document not found.  Cannot update"
+
+        doc_idx = self._queue.index(doc)
+        doc = self._queue[doc_idx] # is this redundant?
+
+        for key in item.keys():
+            # root level for now, recursion to support all to come..
+            if isinstance(item[key], dict):
+                _update_dict_value(doc, key, item[key])
+            else:
+                doc[key] = item[key]
+
+        self._create_index_for(doc) # update all indexes with new values
 
     def delete(self, query):
         # take advantages of indexes
@@ -138,4 +181,18 @@ class Store(object):
             for item in self._queue:
                 if item.has_key(key):
                     self._indexes[key][item.get(key)] = item
+
+    def _pop_index_from_key(self, doc, key, value):
+        doc[key].pop(value)
+
+    def _push_value_onto_key(self, doc, key, value):
+        # supports top-level only for now
+        doc[key].append(value)
+
+    def _increment_value_of_key(self, doc, key, value):
+        #self._queue[q_idx][key] += value
+        doc[key] += value
+
+    def _decrement_value_of_key(self, doc, key, value):
+        doc[key] -= value
 
