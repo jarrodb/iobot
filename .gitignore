@@ -36,3 +36,8 @@ fabfile_local.py
 *.mp4
 *.m4p
 *.mov
+
+# build info
+build/
+dist/
+*.egg-info/
