@@ -6,6 +6,9 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 
 from iobot.plugins import CommandRegister, TextPlugin
+from iobot.api import APIServer
+from iobot.store import Store
+from iobot.user import User
 
 class IrcProtoCmd(object):
 
@@ -108,6 +111,12 @@ class IOBot(object):
 
         self._initial_chans = initial_chans
         self._on_ready = on_ready
+
+        # initialize API server
+        self._api = APIServer()
+
+        # initialize the Store
+        self._store = Store()
 
         # finally, connect.
         self._connect()
