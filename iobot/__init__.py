@@ -19,7 +19,7 @@ class IrcProtoCmd(object):
             h(irc, ln)
 
 
-renick = re.compile("^(\w*?)!")
+reuser = re.compile("^(\w*?)!([\W\w]+)")
 
 
 class IrcObj(object):
@@ -30,9 +30,11 @@ class IrcObj(object):
     def __init__(self, line, bot):
         self.text = self.server_cmd = self.chan = self.nick = None
         self._bot = bot
-        self.line = line
-        self.command = None
-        self.command_args = None
+        self.line = line            # Original (unparsed line)
+        self.command = None         # Plugin command
+        self.command_args = None    # <plugin> <command args>
+        self.nick = None            # IRC Nickname
+        self.mask = None            # user@host
         self._parse_line(line)
 
     def _parse_line(self, line):
@@ -52,9 +54,9 @@ class IrcObj(object):
         stoks = tokens[0].split()
 
         # find originator
-        nick = renick.findall(stoks[0])
-        if len(nick) == 1:
-            self.nick = nick[0]
+        originator = reuser.match(stoks[0])
+        if originator:
+            self.nick, self.usermask = originator.groups()
         stoks = stoks[1:] # strip off server tok
 
         self.server_cmd = stoks[0].upper()
