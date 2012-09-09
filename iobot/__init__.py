@@ -9,6 +9,7 @@ from iobot.plugins import CommandRegister, TextPlugin
 from iobot.api import APIServer
 from iobot.store import Store
 from iobot.user import User
+from iobot.core import core_plugins
 
 class IrcProtoCmd(object):
 
@@ -60,12 +61,12 @@ class IrcObj(object):
         # find originator
         originator = reuser.match(stoks[0])
         if originator:
-            self.nick, self.usermask = originator.groups()
+            self.nick, self.mask = originator.groups()
             _user = self._bot.store.find_one({
                     'nick': self.nick,
                     'mask': self.mask,
                     })
-            self._user = User(_user) if _user else None
+            self.user = User(_user) if _user else None
         stoks = stoks[1:] # strip off server tok
 
         self.server_cmd = stoks[0].upper()
@@ -121,11 +122,14 @@ class IOBot(object):
         # build our user command list
         self.cmds = dict()
 
+        # initialize core plugins
+        self._initialize_core_plugins()
+
         # initialize the Store
         self.store = Store()
 
         # initialize API server
-        self._api = APIServer(self.store)
+        #self._api = APIServer(self.store)
 
         # finally, connect.
         self._connect()
@@ -160,14 +164,29 @@ class IOBot(object):
                 )
             p_obj = p_module.Plugin()
 
-            cmds = []
-            for method in dir(p_obj):
-                if callable(getattr(p_obj, method)) \
-                    and hasattr(getattr(p_obj, method), 'cmd'):
-                    cmds.append(method)
+            cmds = self._get_commands_from_plugin(p_obj)
+            self._add_plugin_commands(cmds, p_obj)
 
-            for cmd in cmds:
-                self._plugins[cmd] = p_obj
+    def _initialize_core_plugins(self):
+        for _cp in core_plugins:
+            cp_obj = _cp()
+            cmds = self._get_commands_from_plugin(cp_obj)
+            self._add_plugin_commands(cmds, cp_obj)
+
+    def _add_plugin_commands(self, cmds, obj):
+        # don't allow other people to stomp on existing plugins ??
+        for cmd in cmds:
+            if cmd in self._plugins:
+                raise ValueError('command %s already exists' % cmd)
+            self._plugins[cmd] = obj
+
+    def _get_commands_from_plugin(self, obj):
+        cmds = []
+        for method in dir(obj):
+            if callable(getattr(obj, method)) \
+               and hasattr(getattr(obj, method), 'cmd'):
+                cmds.append(method)
+        return cmds
 
     def _connect(self):
         _sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
