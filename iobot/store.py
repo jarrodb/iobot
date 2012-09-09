@@ -51,46 +51,35 @@ class Store(object):
 
         self.insert(item)
 
-    def update(self, item):
-        assert isinstance(item, dict), "Document must be a dict"
+    def update(self, query, updates):
+        if not isinstance(query, dict): raise TypeError('Query type: dict')
+        if not isinstance(updates, dict): raise TypeError('Updates type: dict')
 
-        KEYWORDS = {
-            '$push': '_push_value_onto_key',
-            '$pop': '_pop_index_from_key',
-            '$inc': '_increment_value_of_key',
-            '$dec': '_decrement_value_of_key',
+        self.KEYWORDS = {
+            '$push': self._push_value_onto_key,
+            '$pop': self._pop_index_from_key,
+            '$inc': self._increment_value_of_key,
+            '$dec': self._decrement_value_of_key,
             }
 
-        def _update_dict_value(doc, key, d_value):
-            if len(d_value.keys()) > 1:
-                # no keywords specificed at root level
-                doc[key] = d_value
-                return
+        docs = self.find(query)
+        if not docs: return # no documents matched the query
 
-            # operations will have only one key
-            # i.e. {'count': {'$inc': 1}}
-            d_key = d_value.keys()[0]
-            kw_func = KEYWORDS.get(d_key, None)
-            if kw_func:
-                kw_func = getattr(self, kw_func)
-                kw_func(doc, key, d_value[d_key])
-            else:
-                doc[key] = d_value
+        for doc in docs:
+            self._update_doc(doc, updates)
 
-        doc = self.find_one({self._ID_KEY: item[self._ID_KEY]})
-        assert doc, "Document not found.  Cannot update"
+    def _update_doc(self, orig_doc, update_doc):
+        #doc_idx = self._queue.index(doc)
+        #doc = self._queue[doc_idx] # is this redundant?
 
-        doc_idx = self._queue.index(doc)
-        doc = self._queue[doc_idx] # is this redundant?
-
-        for key in item.keys():
+        for key in update_doc.keys():
             # root level for now, recursion to support all to come..
-            if isinstance(item[key], dict):
-                _update_dict_value(doc, key, item[key])
+            if isinstance(update_doc[key], dict):
+                self._update_doc_dict_value(orig_doc, key, update_doc[key])
             else:
-                doc[key] = item[key]
+                orig_doc[key] = update_doc[key]
 
-        self._create_index_for(doc) # update all indexes with new values
+        self._create_index_for(orig_doc) # update all indexes with new values
 
     def delete(self, query):
         # take advantages of indexes
@@ -181,6 +170,21 @@ class Store(object):
             for item in self._queue:
                 if item.has_key(key):
                     self._indexes[key][item.get(key)] = item
+
+    def _update_doc_dict_value(self, doc, key, d_value):
+        if len(d_value.keys()) > 1:
+            # no keywords specificed at root level
+            doc[key] = d_value
+            return
+
+        # operations will have only one key
+        # i.e. {'count': {'$inc': 1}}
+        d_key = d_value.keys()[0]
+        kw_func = self.KEYWORDS.get(d_key, None)
+        if kw_func:
+            kw_func(doc, key, d_value[d_key])
+        else:
+            doc[key] = d_value
 
     def _pop_index_from_key(self, doc, key, value):
         doc[key].pop(value)

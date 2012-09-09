@@ -34,9 +34,9 @@ class StoreTestCases(AsyncTestCase):
         assert doc['perms'][0] == 'test0'
         assert doc['perms'][-1] == 'test3' # baseline
 
-        self.store.update({self._id_key: doc_id, 'perms': {'$pop': 0}})  #first
-        self.store.update({self._id_key: doc_id, 'perms': {'$pop': 1}})  #1
-        self.store.update({self._id_key: doc_id, 'perms': {'$pop': -1}}) #last
+        self.store.update({self._id_key: doc_id}, {'perms': {'$pop': 0}})
+        self.store.update({self._id_key: doc_id}, {'perms': {'$pop': 1}})
+        self.store.update({self._id_key: doc_id}, {'perms': {'$pop': -1}})
 
         doc = self.store.find_one({'user': 'goliath'})
         assert len(doc['perms']) == 1
@@ -47,7 +47,7 @@ class StoreTestCases(AsyncTestCase):
         doc_id = doc[self._id_key]
         assert not doc['perms'] # baseline
 
-        self.store.update({self._id_key: doc_id, 'perms': {'$push': 'admin'}})
+        self.store.update({self._id_key: doc_id},{'perms': {'$push': 'admin'}})
         doc = self.store.find_one({'user': 'david'})
         assert 'admin' in doc['perms']
 
@@ -56,7 +56,7 @@ class StoreTestCases(AsyncTestCase):
         doc_id = doc[self._id_key]
         assert doc['level'] == 7 # baseline
 
-        self.store.update({self._id_key: doc_id, 'level': {'$inc': 1}})
+        self.store.update({self._id_key: doc_id}, {'level': {'$inc': 1}})
         doc = self.store.find_one({'user': 'david'})
         assert doc['level'] == 8
 
