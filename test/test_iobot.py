@@ -94,10 +94,7 @@ class BotTestCases(AsyncTestCase):
         assert chan not in self.bot.chans
 
     def test_plugin_echo(self):
-        class Echo(TextPlugin):
-            def on_text(self, irc):
-                irc.say(irc.text)
-        self.bot.register(Echo())
+        self.bot.register(['echo'])
 
         # :nod!~nod@crunchy.bueno.land PRIVMSG #xx :hi
         self.ircin("PRIVMSG #xx", "hi")
