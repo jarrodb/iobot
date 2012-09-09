@@ -68,18 +68,6 @@ class Store(object):
         for doc in docs:
             self._update_doc(doc, updates)
 
-    def _update_doc(self, orig_doc, update_doc):
-        #doc_idx = self._queue.index(doc)
-        #doc = self._queue[doc_idx] # is this redundant?
-
-        for key in update_doc.keys():
-            # root level for now, recursion to support all to come..
-            if isinstance(update_doc[key], dict):
-                self._update_doc_dict_value(orig_doc, key, update_doc[key])
-            else:
-                orig_doc[key] = update_doc[key]
-
-        self._create_index_for(orig_doc) # update all indexes with new values
 
     def delete(self, query):
         # take advantages of indexes
@@ -170,6 +158,19 @@ class Store(object):
             for item in self._queue:
                 if item.has_key(key):
                     self._indexes[key][item.get(key)] = item
+
+    def _update_doc(self, orig_doc, update_doc):
+        #doc_idx = self._queue.index(doc)
+        #doc = self._queue[doc_idx] # is this redundant?
+
+        for key in update_doc.keys():
+            # root level for now, recursion to support all to come..
+            if isinstance(update_doc[key], dict):
+                self._update_doc_dict_value(orig_doc, key, update_doc[key])
+            else:
+                orig_doc[key] = update_doc[key]
+
+        self._create_index_for(orig_doc) # update all indexes with new values
 
     def _update_doc_dict_value(self, doc, key, d_value):
         if len(d_value.keys()) > 1:
