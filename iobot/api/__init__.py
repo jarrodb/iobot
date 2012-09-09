@@ -1,7 +1,7 @@
 import tornado.web
 import tornado.auth
 
-from iobot.handlers.auth import AuthHandler
+from iobot.api.handlers.auth import AuthHandler
 
 
 class APIServer(object):
@@ -32,6 +32,7 @@ class APIServer(object):
             (AuthHandler.URL, AuthHandler),
             ]
 
+        # get that out of there...
         return tornado.web.Application(
             routes,
             twitter_consumer_key='FcwhVFaLVlkupO97GF12Rw',

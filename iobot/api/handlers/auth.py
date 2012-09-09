@@ -13,7 +13,7 @@ class AuthHandler(tornado.web.RequestHandler,
         if self.get_argument("oauth_token", None):
             self.get_authenticated_user(self.async_callback(self._on_auth))
             return
-        self.authorize_redirect()
+        self.authenticate_redirect('http://10.77.77.118:8899/auth')
 
     def _on_auth(self, user):
         if not user:
