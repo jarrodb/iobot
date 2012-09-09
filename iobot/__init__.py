@@ -76,6 +76,7 @@ class IrcObj(object):
         self.stoks = stoks
 
     def say(self, text, dest=None):
+        if not dest and irc.chan == irc._bot.nick: dest = irc.nick
         self._bot.say(dest or self.chan, text)
 
     def error(self, text, dest=None):
@@ -129,7 +130,7 @@ class IOBot(object):
         self.store = Store()
 
         # initialize API server
-        #self._api = APIServer(self.store)
+        self._api = APIServer(self.store)
 
         # finally, connect.
         self._connect()
@@ -276,6 +277,6 @@ def main():
     IOLoop.instance().start()
 
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
