@@ -35,8 +35,6 @@ class APIServer(object):
         # get that out of there...
         return tornado.web.Application(
             routes,
-            twitter_consumer_key='FcwhVFaLVlkupO97GF12Rw',
-            twitter_consumer_secret='JEGIeELh0GGdYr0nGfmy1S4E9iBdBI1OiT0O6OoSXw',
             store=self._store,
             debug=True
             )
