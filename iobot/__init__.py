@@ -76,7 +76,7 @@ class IrcObj(object):
         self.stoks = stoks
 
     def say(self, text, dest=None):
-        if not dest and irc.chan == irc._bot.nick: dest = irc.nick
+        if not dest and self.chan == self._bot.nick: dest = self.nick
         self._bot.say(dest or self.chan, text)
 
     def error(self, text, dest=None):
