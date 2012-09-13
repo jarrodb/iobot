@@ -6,6 +6,10 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 
 from iobot.plugins import CommandRegister, TextPlugin
+from iobot.api import APIServer
+from iobot.store import Store
+from iobot.user import User
+from iobot.core import core_plugins
 
 class IrcProtoCmd(object):
 
@@ -35,6 +39,7 @@ class IrcObj(object):
         self.command_args = None    # <plugin> <command args>
         self.nick = None            # IRC Nickname
         self.mask = None            # user@host
+        self.user = None
         self._parse_line(line)
 
     def _parse_line(self, line):
@@ -56,7 +61,12 @@ class IrcObj(object):
         # find originator
         originator = reuser.match(stoks[0])
         if originator:
-            self.nick, self.usermask = originator.groups()
+            self.nick, self.mask = originator.groups()
+            _user = self._bot.store.find_one({
+                    'nick': self.nick,
+                    'mask': self.mask,
+                    })
+            self.user = User(_user) if _user else None
         stoks = stoks[1:] # strip off server tok
 
         self.server_cmd = stoks[0].upper()
@@ -66,6 +76,7 @@ class IrcObj(object):
         self.stoks = stoks
 
     def say(self, text, dest=None):
+        if not dest and self.chan == self._bot.nick: dest = self.nick
         self._bot.say(dest or self.chan, text)
 
     def error(self, text, dest=None):
@@ -89,6 +100,8 @@ class IOBot(object):
         @params
         initial_chans: None or list of strings representing channels to join
         """
+        # Move state variables into whatever data store used
+        # and access from that.
         self.nick = nick
         self.chans = set() # chans we're a member of
         self.owner = owner
@@ -97,6 +110,8 @@ class IOBot(object):
         self.char = char
         self._plugins = dict()
         self._connected = False
+        self._initial_chans = initial_chans
+        self._on_ready = on_ready
         self._registered = []
         # used for parsing out nicks later, just wanted to compile it once
         # server protocol gorp
@@ -109,8 +124,14 @@ class IOBot(object):
         # build our user command list
         self.cmds = dict()
 
-        self._initial_chans = initial_chans
-        self._on_ready = on_ready
+        # initialize core plugins
+        self._initialize_core_plugins()
+
+        # initialize the Store
+        self.store = Store()
+
+        # initialize API server
+        self._api = APIServer(self.store)
 
         # finally, connect.
         self._connect()
@@ -146,14 +167,29 @@ class IOBot(object):
                 )
             p_obj = p_module.Plugin()
 
-            cmds = []
-            for method in dir(p_obj):
-                if callable(getattr(p_obj, method)) \
-                    and hasattr(getattr(p_obj, method), 'cmd'):
-                    cmds.append(method)
+            cmds = self._get_commands_from_plugin(p_obj)
+            self._add_plugin_commands(cmds, p_obj)
 
-            for cmd in cmds:
-                self._plugins[cmd] = p_obj
+    def _initialize_core_plugins(self):
+        for _cp in core_plugins:
+            cp_obj = _cp()
+            cmds = self._get_commands_from_plugin(cp_obj)
+            self._add_plugin_commands(cmds, cp_obj)
+
+    def _add_plugin_commands(self, cmds, obj):
+        # don't allow other people to stomp on existing plugins ??
+        for cmd in cmds:
+            if cmd in self._plugins:
+                raise ValueError('command %s already exists' % cmd)
+            self._plugins[cmd] = obj
+
+    def _get_commands_from_plugin(self, obj):
+        cmds = []
+        for method in dir(obj):
+            if callable(getattr(obj, method)) \
+               and hasattr(getattr(obj, method), 'cmd'):
+                cmds.append(method)
+        return cmds
 
             # append the module as "registered"
             if p not in self._registered: self._registered.append(p)
@@ -249,6 +285,6 @@ def main():
     IOLoop.instance().start()
 
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
