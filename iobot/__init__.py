@@ -97,6 +97,7 @@ class IOBot(object):
         self.char = char
         self._plugins = dict()
         self._connected = False
+        self._registered = []
         # used for parsing out nicks later, just wanted to compile it once
         # server protocol gorp
         self._irc_proto = {
@@ -136,6 +137,7 @@ class IOBot(object):
         """
         accepts an instance of Plugin to add to the callback chain
         """
+
         for p in plugins:
             # update to support custom paths?
             p_module = __import__(
@@ -152,6 +154,9 @@ class IOBot(object):
 
             for cmd in cmds:
                 self._plugins[cmd] = p_obj
+
+            # append the module as "registered"
+            if p not in self._registered: self._registered.append(p)
 
     def _connect(self):
         _sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -225,6 +230,9 @@ class IOBot(object):
         self._process_plugins(self._parse_line(line))
         self._next()
 
+    def reload_plugin(self, plugin):
+        # reinitialize the plugins
+        self.register([plugin])
 
 def main():
     ib = IOBot(
