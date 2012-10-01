@@ -109,10 +109,12 @@ class IOBot(object):
         self.port = port
         self.char = char
         self._plugins = dict()
+        self._core_plugins = dict()
         self._connected = False
         self._initial_chans = initial_chans
         self._on_ready = on_ready
         self._registered = []
+        self._initialized = False
         # used for parsing out nicks later, just wanted to compile it once
         # server protocol gorp
         self._irc_proto = {
@@ -135,6 +137,9 @@ class IOBot(object):
 
         # finally, connect.
         self._connect()
+
+        #
+        self._initialized = True
 
     def hook(self, cmd, hook_f):
         """
@@ -170,16 +175,20 @@ class IOBot(object):
             cmds = self._get_commands_from_plugin(p_obj)
             self._add_plugin_commands(cmds, p_obj)
 
+            # append the module as "registered"
+            if p not in self._registered: self._registered.append(p)
+
     def _initialize_core_plugins(self):
         for _cp in core_plugins:
             cp_obj = _cp()
             cmds = self._get_commands_from_plugin(cp_obj)
             self._add_plugin_commands(cmds, cp_obj)
+            self._core_plugins[cp_obj.NAME] = cp_obj
 
     def _add_plugin_commands(self, cmds, obj):
         # don't allow other people to stomp on existing plugins ??
         for cmd in cmds:
-            if cmd in self._plugins:
+            if cmd in self._plugins and not self._initialized:
                 raise ValueError('command %s already exists' % cmd)
             self._plugins[cmd] = obj
 
@@ -190,9 +199,6 @@ class IOBot(object):
                and hasattr(getattr(obj, method), 'cmd'):
                 cmds.append(method)
         return cmds
-
-            # append the module as "registered"
-            if p not in self._registered: self._registered.append(p)
 
     def _connect(self):
         _sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -268,7 +274,21 @@ class IOBot(object):
 
     def reload_plugin(self, plugin):
         # reinitialize the plugins
-        self.register([plugin])
+        core = False
+        for _cp in core_plugins:
+            if _cp.NAME == plugin:
+                reload(_cp)
+                core = True
+                break
+        if not core:
+            self.register([plugin])
+            p_module = __import__(
+                'iobot.plugins.%s.plugin'%plugin,
+                fromlist=['Plugin']
+                )
+            reload(p_module)
+            self.register([plugin])
+
 
 def main():
     ib = IOBot(

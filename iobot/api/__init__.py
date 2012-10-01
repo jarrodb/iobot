@@ -36,7 +36,7 @@ class APIServer(object):
         return tornado.web.Application(
             routes,
             store=self._store,
-            debug=True
+            debug=False
             )
 
     def _(self):

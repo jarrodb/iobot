@@ -5,6 +5,8 @@ from iobot.plugins.decorators import plugin_command
 
 class CoreAuth(TextPlugin):
 
+    NAME = 'auth'
+
     key = "FcwhVFaLVlkupO97GF12Rw"
     secret = "JEGIeELh0GGdYr0nGfmy1S4E9iBdBI1OiT0O6OoSXw"
 
